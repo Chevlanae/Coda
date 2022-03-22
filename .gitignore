@@ -1,7 +1,4 @@
 node_modules
 node_modules/
 .coda-credentials.json
-.apikeys.json
 .coda.json
-.coda.json
-.coda-credentials.json

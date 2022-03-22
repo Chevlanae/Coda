@@ -33,11 +33,3 @@ export const CampaignSchema = coda.makeObjectSchema({
 		"updatedBy",
 	],
 });
-
-export const SendEmailResponseSchema = coda.makeObjectSchema({
-	properties: {
-		msg: { type: coda.ValueType.String },
-		code: { type: coda.ValueType.String },
-		params: { type: coda.ValueType.String },
-	},
-});
