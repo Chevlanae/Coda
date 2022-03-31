@@ -1,7 +1,7 @@
 import * as coda from "@codahq/packs-sdk";
 
-import { CampaignSchema } from "./schemas";
-import { generateObjectSchemaProperties } from "./helpers";
+import { CampaignSchema, ListSchema, TemplateSchema, ChannelSchema } from "./schemas";
+import { deriveObjectSchemaProperties } from "./helpers";
 
 export const pack = coda.newPack();
 
@@ -14,12 +14,74 @@ pack.setUserAuthentication({
 pack.addNetworkDomain("api.iterable.com");
 
 pack.addSyncTable({
+	name: "Channels",
+	description: "Dynamic table that displays channels synced from your Iterable project.",
+	schema: ChannelSchema,
+	identityName: "Channel",
+	formula: {
+		name: "SyncChannels",
+		description: "Syncs channels from Iterable.",
+		parameters: [],
+		execute: async function ([], context) {
+			let response = await context.fetcher.fetch({
+					method: "GET",
+					url: "https://api.iterable.com/api/channels",
+				}),
+				channels: Array<any> = response.body.channels;
+
+			return {
+				result: channels.map((channel) => {
+					return {
+						ID: channel.id,
+						name: channel.name,
+						type: channel.channelType,
+						messageMedium: channel.messageMedium,
+					};
+				}),
+			};
+		},
+	},
+});
+
+pack.addSyncTable({
+	name: "Templates",
+	description: "Dynamic table that displays templates synced from your Iterable project.",
+	schema: TemplateSchema,
+	identityName: "Template",
+	formula: {
+		name: "SyncTemplates",
+		description: "Syncs templates from Iterable.",
+		parameters: [],
+		execute: async function ([], context) {
+			let response = await context.fetcher.fetch({
+					method: "GET",
+					url: "https://api.iterable.com/api/templates",
+				}),
+				templates: Array<any> = response.body.templates;
+
+			return {
+				result: templates.map((template) => {
+					return {
+						templateId: template.templateId,
+						dateCreated: new Date(template.createdAt).toString(),
+						dateUpdated: new Date(template.updatedAt).toString(),
+						name: template.name,
+						createdBy: template.creatorUserId,
+						messageTypeId: template.messageTypeId,
+					};
+				}),
+			};
+		},
+	},
+});
+
+pack.addSyncTable({
 	name: "Campaigns",
 	schema: CampaignSchema,
 	identityName: "Campaign",
 	formula: {
 		name: "SyncCampaigns",
-		description: "Sync campaigns from iterable",
+		description: "Sync campaigns from your Iterable project.",
 		parameters: [],
 		execute: async function ([], context) {
 			let response = await context.fetcher.fetch({
@@ -59,9 +121,39 @@ pack.addSyncTable({
 	},
 });
 
+pack.addSyncTable({
+	name: "Lists",
+	description: "Dynamic table that displays lists synced from your Iterable project.",
+	schema: ListSchema,
+	identityName: "List",
+	formula: {
+		name: "SyncLists",
+		description: "Syncs lists from Iterable.",
+		parameters: [],
+		execute: async function ([], context) {
+			let response = await context.fetcher.fetch({
+					method: "GET",
+					url: "https://api.iterable.com/api/lists",
+				}),
+				lists: Array<any> = response.body.lists;
+
+			return {
+				result: lists.map((list) => {
+					return {
+						ID: list.id,
+						name: list.name,
+						DateCreated: new Date(list.createdAt).toString(),
+						type: list.listType,
+					};
+				}),
+			};
+		},
+	},
+});
+
 pack.addDynamicSyncTable({
 	name: "Catalogs",
-	description: "Dynamic table that displays a selected catalog from your Iterable project",
+	description: "Dynamic table that displays a selected catalog synced from your Iterable project.",
 	listDynamicUrls: async function (context) {
 		let response = await context.fetcher.fetch({
 			method: "GET",
@@ -92,7 +184,7 @@ pack.addDynamicSyncTable({
 			sampleData = response.body.params.catalogItemsWithProperties[0].value,
 			featured = [...Object.keys(sampleData), "dateModified"],
 			properties: coda.ObjectSchemaProperties = {
-				...generateObjectSchemaProperties(sampleData),
+				...deriveObjectSchemaProperties(sampleData),
 				itemId: { type: coda.ValueType.String },
 				dateModified: { type: coda.ValueType.String },
 			};
