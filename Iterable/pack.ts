@@ -1,9 +1,13 @@
 import * as coda from "@codahq/packs-sdk";
+import { NodeHtmlMarkdown } from "node-html-markdown";
 
 import * as schemas from "./schemas";
 import { deriveObjectSchema } from "./helpers.js";
 
 export const pack = coda.newPack();
+
+//https://api.iterable.com/api/docs
+pack.addNetworkDomain("api.iterable.com");
 
 pack.setUserAuthentication({
 	type: coda.AuthenticationType.CustomHeaderToken,
@@ -11,8 +15,29 @@ pack.setUserAuthentication({
 	instructionsUrl: "https://support.iterable.com/hc/en-us/articles/360043464871-API-Keys-",
 });
 
-//https://api.iterable.com/api/docs
-pack.addNetworkDomain("api.iterable.com");
+pack.addFormula({
+	name: "GetTemplateHTML",
+	description: "Get Markdown representation of html from a template in Iterable.",
+	parameters: [
+		coda.makeParameter({
+			type: coda.ParameterType.Number,
+			name: "templateId",
+			description: "Template's ID in Iterable.",
+		}),
+	],
+	resultType: coda.ValueType.String,
+	codaType: coda.ValueHintType.Markdown,
+	execute: async function ([templateId], context) {
+		let response = await context.fetcher.fetch({
+			method: "GET",
+			url: coda.withQueryParams("https://api.iterable.com/api/templates/email/get", {
+				templateId: templateId,
+			}),
+		});
+
+		return NodeHtmlMarkdown.translate(response.body.html);
+	},
+});
 
 pack.addSyncTable({
 	name: "MessageTypes",
@@ -240,7 +265,6 @@ pack.addDynamicSyncTable({
 				featured: [...Object.keys(sampleData), "dateModified"],
 				identity: {
 					name: "Entry",
-					dynamicUrl: context.sync.dynamicUrl,
 				},
 			}),
 		});

@@ -18,7 +18,7 @@ export function coerceArrayType(inputArray: any[]) {
  * @param {any} object Any parsed JSON object
  * @returns {coda.ObjectSchemaProperties} Resulting properties object
  */
-export function deriveObjectSchemaProperties(object: any) {
+export function deriveObjectSchemaProperties(object: any, literals?: boolean) {
 	let result: coda.ObjectSchemaProperties<any> = {};
 
 	for (let [key, value] of Object.entries(object)) {
