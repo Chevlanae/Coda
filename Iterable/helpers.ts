@@ -1,5 +1,12 @@
 import * as coda from "@codahq/packs-sdk";
 
+/**
+ * Takes an input array and checks the type of each value.
+ * If the array is a typed array, the function will return a string literal of that array's type.
+ * If the array is a tuple the function will return "any".
+ * @param inputArray any array
+ * @returns string literal
+ */
 export function coerceArrayType(inputArray: any[]) {
 	let valueType = <"string" | "number" | "boolean" | "object">typeof inputArray[0];
 
@@ -13,12 +20,13 @@ export function coerceArrayType(inputArray: any[]) {
 /**
  * Takes any parsed JSON and creates properties for an ObjectSchema depending on the typeof result of a property's value. Only works on primitive types.
  * E.g. If a property is a string, it will be replaced with {type: coda.ValueType.String}.
- * Nested objects will return as a nested ObjectSchema, where this function is called recursively on the nested object's properties to generate the nested schema's properties.
- * Arrays will be converted to objects with their indices as property keys, and then treated as a normal object.
+ * Nested objects will return as a nested ObjectSchema, where this function is called recursively on the nested object.
+ * Arrays will go through type coersion and a corresponding array schema will be generated.
+ * Tuples will be converted to objects with their indices as property keys, and then treated as a normal object.
  * @param {any} object Any parsed JSON object
  * @returns {coda.ObjectSchemaProperties} Resulting properties object
  */
-export function deriveObjectSchemaProperties(object: any, literals?: boolean) {
+export function deriveObjectSchemaProperties(object: any) {
 	let result: coda.ObjectSchemaProperties<any> = {};
 
 	for (let [key, value] of Object.entries(object)) {
@@ -82,11 +90,43 @@ export function deriveObjectSchemaProperties(object: any, literals?: boolean) {
 	return result;
 }
 
-export function deriveObjectSchema(source, options?: Omit<coda.ObjectSchemaDefinition<string, string>, "type"> & { type?: coda.ValueType.Object }) {
-	options.properties = {
-		...deriveObjectSchemaProperties(source),
-		...options.properties,
-	};
+export function aggregateFieldMappings(array: any[]) {
+	let result: coda.ObjectSchemaProperties<any> = {};
 
-	return coda.makeObjectSchema(options);
+	for (let item of array) {
+		let properties = deriveObjectSchemaProperties(item);
+
+		for (let [key, value] of Object.entries(properties)) {
+			if (!(key in result)) {
+				result[key] = value;
+			}
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Wrapper for deriveObjectSchemaProperties(). Any options defined will be appended to the resulting ObjectSchema, overwriting the source.
+ * @param source sample JSON from which the ObjectSchema will be based.
+ * @param options ObjectSchema options. See coda.makeObjectSchema.
+ * @returns ObjectSchemaDefinition
+ */
+export function deriveObjectSchema(
+	source: any | Array<any>,
+	definition?: Omit<coda.ObjectSchemaDefinition<string, string>, "type"> & { type?: coda.ValueType.Object }
+) {
+	if (Array.isArray(source)) {
+		definition.properties = {
+			...aggregateFieldMappings(source),
+			...definition.properties,
+		};
+	} else {
+		definition.properties = {
+			...deriveObjectSchemaProperties(source),
+			...definition.properties,
+		};
+	}
+
+	return coda.makeObjectSchema(definition);
 }

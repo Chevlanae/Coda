@@ -27,6 +27,7 @@ pack.addFormula({
 	],
 	resultType: coda.ValueType.String,
 	codaType: coda.ValueHintType.Markdown,
+	isAction: true,
 	execute: async function ([templateId], context) {
 		let response = await context.fetcher.fetch({
 			method: "GET",
@@ -249,24 +250,31 @@ pack.addDynamicSyncTable({
 	getSchema: async function (context) {
 		let response = await context.fetcher.fetch({
 				method: "GET",
-				url: context.sync.dynamicUrl + "/items",
+				url: coda.withQueryParams(context.sync.dynamicUrl + "/items", {
+					pageSize: 99999,
+				}),
 			}),
-			sampleData = response.body.params.catalogItemsWithProperties[0].value;
+			sampleData = response.body.params.catalogItemsWithProperties.map((obj) => {
+				return obj.value;
+			});
+
+		let itemSchema = deriveObjectSchema(sampleData, {
+			properties: {
+				itemId: { type: coda.ValueType.String },
+				dateModified: { type: coda.ValueType.String },
+			},
+			id: "itemId",
+			primary: "itemId",
+			identity: {
+				name: "Entry",
+			},
+		});
+
+		itemSchema.featured = [...Object.keys(itemSchema.properties)];
 
 		return coda.makeSchema({
 			type: coda.ValueType.Array,
-			items: deriveObjectSchema(sampleData, {
-				properties: {
-					itemId: { type: coda.ValueType.String },
-					dateModified: { type: coda.ValueType.String },
-				},
-				id: "itemId",
-				primary: "itemId",
-				featured: [...Object.keys(sampleData), "dateModified"],
-				identity: {
-					name: "Entry",
-				},
-			}),
+			items: itemSchema,
 		});
 	},
 	formula: {
