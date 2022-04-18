@@ -2,7 +2,7 @@ import * as coda from "@codahq/packs-sdk";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 
 import * as schemas from "./schemas";
-import { deriveObjectSchema } from "./helpers.js";
+import { deriveObjectSchema, parseCsvString } from "./helpers.js";
 
 export const pack = coda.newPack();
 
@@ -16,8 +16,8 @@ pack.setUserAuthentication({
 });
 
 pack.addFormula({
-	name: "GetTemplateHTML",
-	description: "Get Markdown representation of html from a template in Iterable.",
+	name: "GetTemplateMarkdown",
+	description: "Get Markdown representation of a template's HTML in Iterable.",
 	parameters: [
 		coda.makeParameter({
 			type: coda.ParameterType.Number,
@@ -25,9 +25,9 @@ pack.addFormula({
 			description: "Template's ID in Iterable.",
 		}),
 	],
+	isAction: true,
 	resultType: coda.ValueType.String,
 	codaType: coda.ValueHintType.Markdown,
-	isAction: true,
 	execute: async function ([templateId], context) {
 		let response = await context.fetcher.fetch({
 			method: "GET",
@@ -37,6 +37,68 @@ pack.addFormula({
 		});
 
 		return NodeHtmlMarkdown.translate(response.body.html);
+	},
+});
+
+pack.addFormula({
+	name: "GetCampaignAnalytics",
+	description: "Get a campaign's analytics from Iterable.",
+	schema: schemas.CampaignAnalyticsSchema,
+	parameters: [
+		coda.makeParameter({
+			type: coda.ParameterType.Number,
+			name: "campaignId",
+			description: "Campaign's ID in Iterable.",
+		}),
+		coda.makeParameter({
+			type: coda.ParameterType.DateArray,
+			name: "dateRange",
+			description: "Range of time from which the analytics will be pulled.",
+		}),
+	],
+	isAction: true,
+	resultType: coda.ValueType.Object,
+	execute: async function ([campaignId, dateRange], context) {
+		let response = await context.fetcher.fetch({
+				method: "GET",
+				url: coda.withQueryParams("https://api.iterable.com/api/campaigns/metrics", {
+					campaignId: campaignId,
+					startDateTime: dateRange[0],
+					endDateTime: dateRange[1],
+				}),
+			}),
+			analytics = parseCsvString(response.body)[0];
+
+		Object.keys(analytics).forEach((key) => {
+			analytics[key] = new Number(analytics[key]);
+		});
+
+		return {
+			campaignId: analytics["id"],
+			startDate: dateRange[0],
+			endDate: dateRange[1],
+			AverageOrderValue: analytics["Average Order Value"],
+			Revenue: analytics["Revenue"],
+			TotalComplaints: analytics["Total Complaints"],
+			TotalHoldout: analytics["Total Email Holdout"],
+			TotalOpens: analytics["Total Email Opens"],
+			TotalFilteredOpens: analytics["Total Email Opens (filtered)"],
+			TotalSendSkips: analytics["Total Email Send Skips"],
+			TotalSends: analytics["Total Email Sends"],
+			TotalBounced: analytics["Total Emails Bounced"],
+			TotalClicked: analytics["Total Emails Clicked"],
+			TotalDelivered: analytics["Total Emails Delivered"],
+			TotalPurchases: analytics["Total Purchases"],
+			TotalUnsubscribes: analytics["Total Unsubscribes"],
+			UniqueClicks: analytics["Unique Email Clicks"],
+			UniqueOpens: analytics["Unique Email Opens"],
+			UniqueFilteredOpens: analytics["Unique Email Opens (filtered)"],
+			UniqueSends: analytics["Unique Email Sends"],
+			UniqueBounced: analytics["Unique Emails Bounced"],
+			UniqueDelivered: analytics["Unique Emails Delivered"],
+			UniquePurchases: analytics["Unique Purchases"],
+			UniqueUnsubscribes: analytics["Unique Unsubscribes"],
+		};
 	},
 });
 
@@ -120,7 +182,7 @@ pack.addSyncTable({
 					return context.fetcher.fetch({
 						method: "GET",
 						url: coda.withQueryParams("https://api.iterable.com/api/templates", {
-							endDateTime: new Date(Date.now()).toISOString(),
+							endDateTime: new Date().toISOString(),
 							templateType: type,
 						}),
 					});
@@ -256,21 +318,20 @@ pack.addDynamicSyncTable({
 			}),
 			sampleData = response.body.params.catalogItemsWithProperties.map((obj) => {
 				return obj.value;
+			}),
+			itemSchema = deriveObjectSchema(sampleData, {
+				properties: {
+					itemId: { type: coda.ValueType.String },
+					dateModified: { type: coda.ValueType.String },
+				},
+				id: "itemId",
+				primary: "itemId",
+				identity: {
+					name: "Entry",
+				},
 			});
 
-		let itemSchema = deriveObjectSchema(sampleData, {
-			properties: {
-				itemId: { type: coda.ValueType.String },
-				dateModified: { type: coda.ValueType.String },
-			},
-			id: "itemId",
-			primary: "itemId",
-			identity: {
-				name: "Entry",
-			},
-		});
-
-		itemSchema.featured = [...Object.keys(itemSchema.properties)];
+		itemSchema.featured = Object.keys(itemSchema.properties);
 
 		return coda.makeSchema({
 			type: coda.ValueType.Array,

@@ -100,3 +100,38 @@ export const CampaignSchema = coda.makeObjectSchema({
 	},
 	featured: ["name", "campaignType", "template", "workflowId", "currentStatus", "sendMedium", "dateCreated", "dateUpdated", "createdBy", "updatedBy"],
 });
+
+export const CampaignAnalyticsSchema = coda.makeObjectSchema({
+	properties: {
+		campaignId: { type: coda.ValueType.Number },
+		startDate: { type: coda.ValueType.String, codaType: coda.ValueHintType.DateTime },
+		endDate: { type: coda.ValueType.String, codaType: coda.ValueHintType.DateTime },
+		AverageOrderValue: { type: coda.ValueType.Number },
+		Revenue: { type: coda.ValueType.Number },
+		TotalComplaints: { type: coda.ValueType.Number },
+		TotalHoldout: { type: coda.ValueType.Number },
+		TotalOpens: { type: coda.ValueType.Number },
+		TotalFilteredOpens: { type: coda.ValueType.Number },
+		TotalSendSkips: { type: coda.ValueType.Number },
+		TotalSends: { type: coda.ValueType.Number },
+		TotalBounced: { type: coda.ValueType.Number },
+		TotalClicked: { type: coda.ValueType.Number },
+		TotalDelivered: { type: coda.ValueType.Number },
+		TotalPurchases: { type: coda.ValueType.Number },
+		TotalUnsubscribes: { type: coda.ValueType.Number },
+		UniqueClicks: { type: coda.ValueType.Number },
+		UniqueOpens: { type: coda.ValueType.Number },
+		UniqueFilteredOpens: { type: coda.ValueType.Number },
+		UniqueSends: { type: coda.ValueType.Number },
+		UniqueBounced: { type: coda.ValueType.Number },
+		UniqueDelivered: { type: coda.ValueType.Number },
+		UniquePurchases: { type: coda.ValueType.Number },
+		UniqueUnsubscribes: { type: coda.ValueType.Number },
+	},
+	id: "campaignId",
+	primary: "campaignId",
+	identity: {
+		name: "CampaignAnalytics",
+	},
+	featured: ["TotalSends", "TotalDelivered", "TotalBounced", "TotalOpens", "TotalSendSkips", "TotalComplaints", "TotalUnsubscribes"],
+});

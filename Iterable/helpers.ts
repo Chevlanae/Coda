@@ -90,6 +90,11 @@ export function deriveObjectSchemaProperties(object: any) {
 	return result;
 }
 
+/**
+ * Aggregates the properties of every JSON object in an array into properties for an ObjectSchema.
+ * @param array array of JSON objects
+ * @returns ObjectSchemaProperties
+ */
 export function aggregateFieldMappings(array: any[]) {
 	let result: coda.ObjectSchemaProperties<any> = {};
 
@@ -97,9 +102,7 @@ export function aggregateFieldMappings(array: any[]) {
 		let properties = deriveObjectSchemaProperties(item);
 
 		for (let [key, value] of Object.entries(properties)) {
-			if (!(key in result)) {
-				result[key] = value;
-			}
+			if (!(key in result)) result[key] = value;
 		}
 	}
 
@@ -129,4 +132,20 @@ export function deriveObjectSchema(
 	}
 
 	return coda.makeObjectSchema(definition);
+}
+
+export function parseCsvString(csvString: string, delimeter: string = ",") {
+	let rows = csvString.split("\n"),
+		headers = rows.shift()?.split(delimeter);
+
+	return rows.map((row) => {
+		let values = row.split(delimeter),
+			resultObj: any = {};
+
+		headers?.forEach((header, index) => {
+			resultObj[header] = values[index];
+		});
+
+		return resultObj;
+	});
 }
